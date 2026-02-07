@@ -1,0 +1,43 @@
+{
+  "name": "workflow-email-mobicycle-productions",
+  "version": "1.0.0",
+  "description": "Business Email Triage Workflow for MobiCycle Productions Account - suppliers@mobicycle.productions",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:prod": "wrangler deploy --env production",
+    "deploy:dev": "wrangler deploy --env development",
+    "tail": "wrangler tail",
+    "test": "bun test",
+    "build": "bun run src/index.ts",
+    "workflow:create": "wrangler workflows instances create EmailTriageWorkflow",
+    "workflow:list": "wrangler workflows instances list",
+    "workflow:status": "wrangler workflows instances get"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "^4.20240404.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "wrangler": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "private-business-repo-productions"
+  },
+  "keywords": [
+    "business",
+    "email-triage", 
+    "cloudflare-workflows",
+    "supplier-management",
+    "productions-only"
+  ],
+  "author": "MobiCycle Productions",
+  "license": "PRIVATE",
+  "private": true,
+  "workspaces": false
+}
