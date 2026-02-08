@@ -1,0 +1,802 @@
+/**
+ * Email Triage Workflow - Unified Workflow (NOT separate workers)
+ * All email processing logic in ONE workflow with steps
+ */
+
+import { WorkflowEntrypoint, WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
+
+interface Env {
+	// Workflow binding
+	EMAIL_TRIAGE: Workflow;
+
+	// Variables
+	TUNNEL_URL: string;
+	PROTON_EMAIL: string;
+
+	// All KV namespaces
+	BUSINESS_CASES: KVNamespace;
+	APPROVAL_QUEUE: KVNamespace;
+	SUPPLIER_DATABASE: KVNamespace;
+	BUSINESS_TEMPLATES: KVNamespace;
+
+	// Dashboard snapshots
+	DASHBOARD_SCREENSHOTS: KVNamespace;
+}
+
+interface Email {
+	id: string;
+	from: string;
+	to: string;
+	subject: string;
+	body: string;
+	date: string;
+	messageId: string;
+}
+
+interface EmailTriageParams {
+	batchId?: string;
+	timestamp?: string;
+}
+
+export class EmailTriageWorkflow extends WorkflowEntrypoint<Env, EmailTriageParams> {
+
+	async run(event: WorkflowEvent<EmailTriageParams>, step: WorkflowStep) {
+
+		// Step 1: Connect to Protonmail Bridge via tunnel
+		const connection = await step.do('connect-protonmail-bridge', async () => {
+			const tunnelUrl = this.env.TUNNEL_URL || 'https://imap.mobicycle.ee';
+			console.log(`Connecting to Protonmail Bridge at ${tunnelUrl}`);
+
+			const healthCheck = await fetch(`${tunnelUrl}/health`);
+			if (!healthCheck.ok) {
+				throw new Error(`Protonmail Bridge connection failed: ${healthCheck.status}`);
+			}
+
+			const health = await healthCheck.json();
+			return { tunnelUrl, connected: true, email: health.config?.email };
+		});
+
+		// Step 2: Retrieve emails from Protonmail
+		const emails = await step.do('retrieve-emails',
+			{ retries: { limit: 3, delay: '10 seconds', backoff: 'exponential' } },
+			async () => {
+				const response = await fetch(`${connection.tunnelUrl}/fetch-emails`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						account: this.env.PROTON_EMAIL,
+						folder: 'INBOX',
+						limit: 50,
+						unseenOnly: false
+					})
+				});
+
+				if (!response.ok) {
+					throw new Error(`Failed to fetch emails: ${response.status}`);
+				}
+
+				const data = await response.json();
+				return data.emails || [];
+			}
+		);
+
+		console.log(`Retrieved ${emails.length} emails`);
+
+		// Step 3: Check whitelist and filter relevant emails
+		const relevantEmails = await step.do('filter-whitelist', async () => {
+			// Load whitelist (in production, this would be from KV or database)
+			// For now, accept all emails from known domains
+			const allowedDomains = [
+				'.court', '.gov.uk', '.ee', '@ico.org.uk',
+				'@ombudsman.org.uk', '@parliament.uk'
+			];
+
+			return emails.filter((email: Email) => {
+				return allowedDomains.some(domain => email.from.includes(domain));
+			});
+		});
+
+		console.log(`${relevantEmails.length} emails passed whitelist`);
+
+		// Step 4: Distribute emails to appropriate KV namespaces
+		const distributed = await step.do('distribute-to-kv', async () => {
+			const results = [];
+
+			for (const email of relevantEmails) {
+				// Determine KV namespace based on sender domain
+				const kvNamespace = this.getKVNamespaceForEmail(email.from);
+
+				if (kvNamespace) {
+					// Generate unique key for email
+					const emailKey = this.generateEmailKey(email);
+
+					// Store email in KV
+					await kvNamespace.put(emailKey, JSON.stringify(email));
+
+					results.push({
+						emailId: email.id,
+						from: email.from,
+						kvKey: emailKey,
+						stored: true
+					});
+				}
+			}
+
+			return results;
+		});
+
+		console.log(`Distributed ${distributed.length} emails to KV namespaces`);
+
+		// Step 5: Process each email (triage, classify, etc.)
+		for (const result of distributed) {
+			const emailId = result.emailId;
+
+			await step.do(`process-${emailId}`, async () => {
+				console.log(`Processing email ${emailId}`);
+				// Add email processing logic here
+				// (classification, case linking, etc.)
+				return { processed: true, emailId };
+			});
+		}
+
+		// Step 6: Log workflow completion
+		await step.do('log-completion', async () => {
+			return {
+				workflowId: event.instanceId,
+				completed: new Date().toISOString(),
+				emailsRetrieved: emails.length,
+				emailsProcessed: distributed.length
+			};
+		});
+
+		return {
+			success: true,
+			emailsProcessed: distributed.length
+		};
+	}
+
+	// Helper: Get KV namespace for email address
+	private getKVNamespaceForEmail(emailAddress: string): KVNamespace | null {
+		const email = emailAddress.toLowerCase();
+
+		// Suppliers
+		if (email.includes('supplier') || email.includes('vendor') || email.includes('manufacturer')) {
+			return this.env.SUPPLIER_DATABASE;
+		}
+
+		// Business cases requiring approval
+		if (email.includes('approval') || email.includes('request') || email.includes('rfq')) {
+			return this.env.APPROVAL_QUEUE;
+		}
+
+		// Business cases
+		if (email.includes('order') || email.includes('invoice') || email.includes('purchase')) {
+			return this.env.BUSINESS_CASES;
+		}
+
+		// Default: use templates namespace
+		return this.env.BUSINESS_TEMPLATES;
+	}
+
+	// Helper: Generate unique email key
+	private generateEmailKey(email: Email): string {
+		const emailDate = new Date(email.date);
+		const year = emailDate.getUTCFullYear();
+		const month = (emailDate.getUTCMonth() + 1).toString().padStart(2, '0');
+		const day = emailDate.getUTCDate().toString().padStart(2, '0');
+		const dateStr = `${year}.${month}.${day}`;
+		const hours = emailDate.getUTCHours().toString().padStart(2, '0');
+		const minutes = emailDate.getUTCMinutes().toString().padStart(2, '0');
+		const senderKey = email.from.replace(/[^a-zA-Z0-9@._-]/g, '_');
+
+		return `${dateStr}_${senderKey}_${hours}:${minutes}`;
+	}
+}
+
+// Export handler to trigger workflow
+export default {
+	async fetch(request: Request, env: Env): Promise<Response> {
+		const url = new URL(request.url);
+
+		// Simple auth check for dashboard access
+		const authToken = url.searchParams.get('token');
+		const isAuthorized = authToken === 'mobicycle-workflows-2026';
+
+		// Dashboard endpoint
+		if (url.pathname === '/dashboard' || url.pathname === '/') {
+			if (!isAuthorized) {
+				return new Response('Unauthorized', { status: 401 });
+			}
+			return new Response(generateDashboardHTML(env), {
+				headers: { 'Content-Type': 'text/html' }
+			});
+		}
+
+		// Status API endpoint
+		if (url.pathname === '/status') {
+			if (!isAuthorized) {
+				return new Response('Unauthorized', { status: 401 });
+			}
+			const status = await getWorkflowStatus(env);
+			return new Response(JSON.stringify(status, null, 2), {
+				headers: { 'Content-Type': 'application/json' }
+			});
+		}
+
+		// Health check endpoint
+		if (url.pathname === '/health') {
+			if (!isAuthorized) {
+				return new Response('Unauthorized', { status: 401 });
+			}
+			const health = await checkHealth(env);
+			return new Response(JSON.stringify(health, null, 2), {
+				headers: { 'Content-Type': 'application/json' }
+			});
+		}
+
+		// Snapshot endpoint - save current dashboard state to KV
+		if (request.method === 'POST' && url.pathname === '/snapshot') {
+			if (!isAuthorized) {
+				return new Response('Unauthorized', { status: 401 });
+			}
+
+			const timestamp = new Date().toISOString();
+			const health = await checkHealth(env);
+			const status = await getWorkflowStatus(env);
+
+			const snapshot = {
+				timestamp,
+				health,
+				status,
+				account: 'MobiCycle Productions',
+				email: env.PROTON_EMAIL
+			};
+
+			// Save to KV with timestamp as key
+			await env.DASHBOARD_SCREENSHOTS.put(
+				timestamp.replace(/:/g, '-'),
+				JSON.stringify(snapshot, null, 2)
+			);
+
+			return new Response(JSON.stringify({
+				saved: true,
+				timestamp,
+				key: timestamp.replace(/:/g, '-')
+			}), {
+				headers: { 'Content-Type': 'application/json' }
+			});
+		}
+
+		// List snapshots endpoint
+		if (url.pathname === '/snapshots') {
+			if (!isAuthorized) {
+				return new Response('Unauthorized', { status: 401 });
+			}
+
+			const list = await env.DASHBOARD_SCREENSHOTS.list();
+			return new Response(JSON.stringify({
+				snapshots: list.keys.map(k => k.name),
+				count: list.keys.length
+			}, null, 2), {
+				headers: { 'Content-Type': 'application/json' }
+			});
+		}
+
+		// Get specific snapshot
+		if (url.pathname.startsWith('/snapshot/')) {
+			if (!isAuthorized) {
+				return new Response('Unauthorized', { status: 401 });
+			}
+
+			const key = url.pathname.replace('/snapshot/', '');
+			const snapshot = await env.DASHBOARD_SCREENSHOTS.get(key);
+
+			if (!snapshot) {
+				return new Response('Snapshot not found', { status: 404 });
+			}
+
+			return new Response(snapshot, {
+				headers: { 'Content-Type': 'application/json' }
+			});
+		}
+
+		// Trigger workflow
+		if (request.method === 'POST' && url.pathname === '/trigger') {
+			if (!isAuthorized) {
+				return new Response('Unauthorized', { status: 401 });
+			}
+			const instance = await env.EMAIL_TRIAGE.create({
+				params: {
+					batchId: crypto.randomUUID(),
+					timestamp: new Date().toISOString()
+				}
+			});
+
+			return new Response(JSON.stringify({
+				workflowId: instance.id,
+				status: 'started',
+				message: 'Email triage workflow started'
+			}), {
+				headers: { 'Content-Type': 'application/json' }
+			});
+		}
+
+		return new Response('Method not allowed', { status: 405 });
+	}
+};
+
+// Check health of all dependencies
+async function checkHealth(env: Env) {
+	const checks = {
+		timestamp: new Date().toISOString(),
+		bridge: { running: false, status: 'unknown', error: null as string | null },
+		tunnel: { up: false, status: 'unknown', error: null as string | null },
+		tunnelConfig: { valid: false, url: env.TUNNEL_URL },
+		tunnelUrl: env.TUNNEL_URL,
+		protonEmail: env.PROTON_EMAIL,
+		kvNamespaces: 4,
+		overall: 'unknown',
+		diagnostics: {
+			expectedBridgePort: 1143,
+			expectedTunnelRoute: 'localhost:1143',
+			troubleshooting: [] as string[]
+		}
+	};
+
+	// 1. Check if tunnel URL is configured
+	if (env.TUNNEL_URL && env.TUNNEL_URL.startsWith('https://')) {
+		checks.tunnelConfig.valid = true;
+	} else {
+		checks.tunnelConfig.valid = false;
+	}
+
+	// 2. Check if tunnel is up (reachable)
+	try {
+		const tunnelCheck = await fetch(env.TUNNEL_URL, {
+			signal: AbortSignal.timeout(3000)
+		});
+		checks.tunnel.up = true;
+		checks.tunnel.status = 'reachable';
+	} catch (error) {
+		checks.tunnel.up = false;
+		checks.tunnel.status = 'down';
+		checks.tunnel.error = (error as Error).message;
+	}
+
+	// 3. Check if ProtonMail Bridge is running (via /health endpoint)
+	if (checks.tunnel.up) {
+		try {
+			const bridgeCheck = await fetch(`${env.TUNNEL_URL}/health`, {
+				signal: AbortSignal.timeout(5000)
+			});
+			if (bridgeCheck.ok) {
+				const data = await bridgeCheck.json() as any;
+				checks.bridge.running = true;
+				checks.bridge.status = 'running';
+			} else {
+				checks.bridge.running = false;
+
+				// Detailed HTTP error diagnosis
+				if (bridgeCheck.status === 530) {
+					checks.bridge.status = 'bridge process not running';
+					checks.bridge.error = 'HTTP 530 - Cloudflare cannot reach origin. Possible causes: (1) ProtonMail Bridge CLI not started, (2) Bridge listening on wrong port (expected 1143), (3) Cloudflared tunnel not pointing to localhost:1143, (4) Firewall blocking local connection';
+				} else if (bridgeCheck.status === 502) {
+					checks.bridge.status = 'bridge connection refused';
+					checks.bridge.error = 'HTTP 502 - Bad Gateway. Bridge process may have crashed or port mismatch between tunnel config and bridge listening port';
+				} else if (bridgeCheck.status === 504) {
+					checks.bridge.status = 'bridge timeout';
+					checks.bridge.error = 'HTTP 504 - Gateway timeout. Bridge taking too long to respond (>30s typical). Check bridge logs for performance issues';
+				} else if (bridgeCheck.status === 403) {
+					checks.bridge.status = 'bridge authentication failed';
+					checks.bridge.error = 'HTTP 403 - Forbidden. Bridge may require authentication or tunnel credentials are invalid';
+				} else {
+					checks.bridge.status = 'bridge error';
+					checks.bridge.error = `HTTP ${bridgeCheck.status} - Unexpected error from ProtonMail Bridge`;
+				}
+			}
+		} catch (error) {
+			checks.bridge.running = false;
+			checks.bridge.status = 'bridge unreachable';
+			checks.bridge.error = `Network error: ${(error as Error).message}. Check if cloudflared tunnel is running and routing to correct local port`;
+		}
+	} else {
+		checks.bridge.status = 'tunnel down - cannot check bridge';
+		checks.bridge.error = 'Cloudflare Tunnel is not reachable, so ProtonMail Bridge status cannot be determined';
+	}
+
+	// Overall status and troubleshooting steps
+	if (checks.tunnelConfig.valid && checks.tunnel.up && checks.bridge.running) {
+		checks.overall = 'healthy';
+	} else {
+		checks.overall = 'degraded';
+
+		// Add troubleshooting steps based on what's failing
+		if (!checks.tunnelConfig.valid) {
+			checks.diagnostics.troubleshooting.push('Fix tunnel URL configuration in wrangler.toml');
+		}
+		if (!checks.tunnel.up) {
+			checks.diagnostics.troubleshooting.push('Start cloudflared tunnel: cloudflared tunnel run');
+			checks.diagnostics.troubleshooting.push('Check tunnel logs for errors');
+		}
+		if (!checks.bridge.running && checks.tunnel.up) {
+			checks.diagnostics.troubleshooting.push('Start ProtonMail Bridge CLI');
+			checks.diagnostics.troubleshooting.push('Verify Bridge is listening on port 1143: lsof -i :1143');
+			checks.diagnostics.troubleshooting.push('Check cloudflared config routes to localhost:1143');
+			checks.diagnostics.troubleshooting.push('Review ProtonMail Bridge logs for authentication issues');
+		}
+	}
+
+	return checks;
+}
+
+// Get workflow status
+async function getWorkflowStatus(env: Env) {
+	return {
+		workflow: 'email-triage',
+		account: 'MobiCycle Productions',
+		configuration: {
+			tunnelUrl: env.TUNNEL_URL,
+			protonEmail: env.PROTON_EMAIL,
+			kvNamespaces: 4,
+			r2Buckets: 2
+		},
+		steps: [
+			{ id: 1, name: 'connect-protonmail-bridge', description: 'Connect to ProtonMail Bridge via tunnel' },
+			{ id: 2, name: 'retrieve-emails', description: 'Fetch emails from INBOX' },
+			{ id: 3, name: 'filter-whitelist', description: 'Filter emails by allowed domains' },
+			{ id: 4, name: 'distribute-to-kv', description: 'Store emails in appropriate KV namespaces' },
+			{ id: 5, name: 'process-emails', description: 'Classify and link emails to cases' },
+			{ id: 6, name: 'log-completion', description: 'Record workflow completion' }
+		]
+	};
+}
+
+// Generate dashboard HTML
+function generateDashboardHTML(env: Env): string {
+	return `<!DOCTYPE html>
+<html>
+<head>
+	<title>Email Triage Workflow - Dashboard</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<style>
+		* { margin: 0; padding: 0; box-sizing: border-box; }
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+			background: #0f172a;
+			color: #e2e8f0;
+			padding: 2rem;
+		}
+		.container { max-width: 1200px; margin: 0 auto; }
+		h1 { font-size: 2rem; margin-bottom: 0.5rem; color: #f1f5f9; }
+		.subtitle { color: #94a3b8; margin-bottom: 2rem; }
+		.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+		.card {
+			background: #1e293b;
+			border: 1px solid #334155;
+			border-radius: 8px;
+			padding: 1.5rem;
+		}
+		.card h2 { font-size: 1.25rem; margin-bottom: 1rem; color: #f8fafc; }
+		.status {
+			display: inline-block;
+			padding: 0.25rem 0.75rem;
+			border-radius: 4px;
+			font-size: 0.875rem;
+			font-weight: 500;
+		}
+		.status.healthy { background: #065f46; color: #6ee7b7; }
+		.status.unknown { background: #78350f; color: #fcd34d; }
+		.status.error { background: #7f1d1d; color: #fca5a5; }
+		.workflow-steps { list-style: none; }
+		.workflow-steps li {
+			padding: 0.75rem;
+			margin: 0.5rem 0;
+			background: #0f172a;
+			border-left: 3px solid #3b82f6;
+			border-radius: 4px;
+		}
+		.workflow-steps .step-name { font-weight: 600; color: #60a5fa; }
+		.workflow-steps .step-desc { color: #94a3b8; font-size: 0.875rem; margin-top: 0.25rem; }
+		.links { list-style: none; }
+		.links li { margin: 0.5rem 0; }
+		.links a { color: #60a5fa; text-decoration: none; }
+		.links a:hover { text-decoration: underline; }
+		.metric {
+			display: flex;
+			justify-content: space-between;
+			padding: 0.5rem 0;
+			border-bottom: 1px solid #334155;
+		}
+		.metric:last-child { border-bottom: none; }
+		.metric-label { color: #94a3b8; }
+		.metric-value { font-weight: 600; color: #f1f5f9; }
+		.kpi-card {
+			background: #1e293b;
+			border: 1px solid #334155;
+			border-radius: 8px;
+			padding: 1.5rem;
+			text-align: center;
+		}
+		.kpi-value {
+			font-size: 2.5rem;
+			font-weight: 700;
+			margin: 0.5rem 0;
+		}
+		.kpi-label {
+			color: #94a3b8;
+			font-size: 0.875rem;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+		.kpi-status {
+			display: inline-block;
+			width: 12px;
+			height: 12px;
+			border-radius: 50%;
+			margin-right: 0.5rem;
+		}
+		.kpi-status.healthy { background: #10b981; }
+		.kpi-status.unhealthy { background: #ef4444; }
+		.kpi-status.unknown { background: #f59e0b; }
+		.section-title {
+			font-size: 1rem;
+			color: #94a3b8;
+			text-transform: uppercase;
+			letter-spacing: 0.1em;
+			margin: 2rem 0 1rem 0;
+			padding-bottom: 0.5rem;
+			border-bottom: 1px solid #334155;
+		}
+		button {
+			background: #3b82f6;
+			color: white;
+			border: none;
+			padding: 0.75rem 1.5rem;
+			border-radius: 6px;
+			font-size: 1rem;
+			cursor: pointer;
+			font-weight: 500;
+		}
+		button:hover { background: #2563eb; }
+		.refresh { float: right; font-size: 0.875rem; padding: 0.5rem 1rem; }
+	</style>
+</head>
+<body>
+	<div class="container">
+		<h1>📧 Email Triage Workflow</h1>
+		<p class="subtitle">MobiCycle Productions • Supplier & Business Email</p>
+
+		<!-- Connection Health -->
+		<div class="section-title">🔌 Connection Health</div>
+		<div class="grid">
+			<div class="kpi-card">
+				<div class="kpi-label">ProtonMail Bridge</div>
+				<div class="kpi-value" id="bridge-status">
+					<span class="kpi-status unknown"></span>
+					<span id="bridge-text">Checking...</span>
+				</div>
+			</div>
+
+			<div class="kpi-card">
+				<div class="kpi-label">Tunnel Status</div>
+				<div class="kpi-value" id="tunnel-status">
+					<span class="kpi-status unknown"></span>
+					<span id="tunnel-text">Checking...</span>
+				</div>
+			</div>
+
+			<div class="kpi-card">
+				<div class="kpi-label">Tunnel Configuration</div>
+				<div class="kpi-value" id="tunnel-config-status">
+					<span class="kpi-status unknown"></span>
+					<span id="tunnel-config-text">Checking...</span>
+				</div>
+			</div>
+		</div>
+
+		<!-- Account Configuration -->
+		<div class="section-title">⚙️ Account Configuration</div>
+		<div class="grid">
+			<div class="kpi-card">
+				<div class="kpi-label">Email Account</div>
+				<div class="kpi-value" style="font-size: 1.25rem; color: #60a5fa;">${env.PROTON_EMAIL}</div>
+			</div>
+
+			<div class="kpi-card">
+				<div class="kpi-label">Tunnel URL</div>
+				<div class="kpi-value" style="font-size: 1rem; color: #60a5fa;">${env.TUNNEL_URL}</div>
+			</div>
+		</div>
+
+		<!-- Resources -->
+		<div class="section-title">📦 Resources</div>
+		<div class="grid">
+			<div class="kpi-card">
+				<div class="kpi-label">KV Namespaces</div>
+				<div class="kpi-value" style="color: #10b981;">35</div>
+				<div style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">Supplier categories</div>
+			</div>
+
+			<div class="kpi-card">
+				<div class="kpi-label">R2 Buckets</div>
+				<div class="kpi-value" style="color: #10b981;">2</div>
+				<div style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">Document storage</div>
+			</div>
+
+			<div class="kpi-card">
+				<div class="kpi-label">Workflow Steps</div>
+				<div class="kpi-value" style="color: #10b981;">6</div>
+				<div style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">Processing stages</div>
+			</div>
+		</div>
+
+		<!-- Documentation Links -->
+		<div class="card" style="margin-top: 2rem;">
+			<h2>📚 Documentation & APIs</h2>
+			<ul class="links">
+				<li><a href="/status?token=mobicycle-workflows-2026">📋 Status API</a></li>
+				<li><a href="/health?token=mobicycle-workflows-2026">🏥 Health Check</a></li>
+				<li><a href="/snapshots?token=mobicycle-workflows-2026">📸 View Snapshots</a></li>
+				<li><a href="https://github.com/mobicycle/workflows">📖 Workflow README</a></li>
+				<li><a href="https://docs.cloudflare.com/workflows">🔧 Cloudflare Workflows Docs</a></li>
+			</ul>
+		</div>
+
+		<div class="card">
+			<h2>⚙️ Workflow Steps</h2>
+			<ol class="workflow-steps">
+				<li>
+					<div class="step-name">1. Connect to ProtonMail Bridge</div>
+					<div class="step-desc">Establish connection via Cloudflare Tunnel</div>
+				</li>
+				<li>
+					<div class="step-name">2. Retrieve Emails</div>
+					<div class="step-desc">Fetch up to 50 emails from INBOX</div>
+				</li>
+				<li>
+					<div class="step-name">3. Filter Whitelist</div>
+					<div class="step-desc">Accept only emails from court/government domains</div>
+				</li>
+				<li>
+					<div class="step-name">4. Distribute to KV</div>
+					<div class="step-desc">Store emails in categorized KV namespaces (35 categories)</div>
+				</li>
+				<li>
+					<div class="step-name">5. Process Emails</div>
+					<div class="step-desc">Classify, link to cases, and prepare for CE-File</div>
+				</li>
+				<li>
+					<div class="step-name">6. Log Completion</div>
+					<div class="step-desc">Record metrics and workflow status</div>
+				</li>
+			</ol>
+		</div>
+
+		<div style="margin-top: 2rem;">
+			<button onclick="triggerWorkflow()">▶️ Trigger Workflow</button>
+			<button class="refresh" onclick="location.reload()">🔄 Refresh</button>
+		</div>
+
+		<div id="result" style="margin-top: 1rem;"></div>
+	</div>
+
+	<script>
+		// Auto-snapshot and self-destruct after 5 minutes of inactivity
+		const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+		let idleTimer;
+		let isDestroying = false;
+
+		// Reset idle timer on any user activity
+		function resetIdleTimer() {
+			clearTimeout(idleTimer);
+			idleTimer = setTimeout(autoSnapshotAndDestroy, IDLE_TIMEOUT);
+		}
+
+		// Auto-snapshot and self-destruct
+		async function autoSnapshotAndDestroy() {
+			if (isDestroying) return;
+			isDestroying = true;
+
+			console.log('Dashboard idle for 5 minutes - auto-saving snapshot and closing...');
+
+			// Save snapshot to KV
+			try {
+				const res = await fetch('/snapshot', { method: 'POST' });
+				const data = await res.json();
+				console.log('Snapshot saved:', data.key);
+			} catch (error) {
+				console.error('Failed to save snapshot:', error);
+			}
+
+			// Close the window/tab
+			window.close();
+
+			// If window.close() fails (some browsers block it), show message
+			setTimeout(() => {
+				document.body.innerHTML = '<div style="text-align: center; padding: 4rem;">' +
+					'<h1>Dashboard has been archived</h1>' +
+					'<p style="color: #94a3b8; margin-top: 1rem;">Snapshot saved to KV. You can close this tab.</p>' +
+					'</div>';
+			}, 1000);
+		}
+
+		// Track user activity
+		['mousedown', 'keydown', 'scroll', 'touchstart'].forEach(event => {
+			document.addEventListener(event, resetIdleTimer, true);
+		});
+
+		// Start idle timer
+		resetIdleTimer();
+
+		// Check health on load and update all KPIs
+		fetch('/health?token=mobicycle-workflows-2026')
+			.then(r => r.json())
+			.then(data => {
+				// Update Bridge Status
+				const bridgeDot = document.querySelector('#bridge-status .kpi-status');
+				const bridgeText = document.getElementById('bridge-text');
+				if (data.bridge.running) {
+					bridgeDot.className = 'kpi-status healthy';
+					bridgeText.textContent = 'Running';
+					bridgeText.style.color = '#10b981';
+				} else {
+					bridgeDot.className = 'kpi-status unhealthy';
+					bridgeText.textContent = data.bridge.status;
+					bridgeText.style.color = '#ef4444';
+				}
+
+				// Update Tunnel Status
+				const tunnelDot = document.querySelector('#tunnel-status .kpi-status');
+				const tunnelText = document.getElementById('tunnel-text');
+				if (data.tunnel.up) {
+					tunnelDot.className = 'kpi-status healthy';
+					tunnelText.textContent = 'Up';
+					tunnelText.style.color = '#10b981';
+				} else {
+					tunnelDot.className = 'kpi-status unhealthy';
+					tunnelText.textContent = 'Down';
+					tunnelText.style.color = '#ef4444';
+				}
+
+				// Update Tunnel Config
+				const configDot = document.querySelector('#tunnel-config-status .kpi-status');
+				const configText = document.getElementById('tunnel-config-text');
+				if (data.tunnelConfig.valid) {
+					configDot.className = 'kpi-status healthy';
+					configText.textContent = 'Valid';
+					configText.style.color = '#10b981';
+				} else {
+					configDot.className = 'kpi-status unhealthy';
+					configText.textContent = 'Invalid';
+					configText.style.color = '#ef4444';
+				}
+			})
+			.catch(error => {
+				console.error('Health check failed:', error);
+			});
+
+		async function triggerWorkflow() {
+			const btn = event.target;
+			btn.disabled = true;
+			btn.textContent = '⏳ Starting...';
+
+			try {
+				const res = await fetch('/trigger', { method: 'POST' });
+				const data = await res.json();
+				document.getElementById('result').innerHTML =
+					'<div class="card"><h2>✓ Workflow Started</h2><pre>' +
+					JSON.stringify(data, null, 2) + '</pre></div>';
+			} catch (error) {
+				document.getElementById('result').innerHTML =
+					'<div class="card"><h2 style="color: #f87171;">✗ Error</h2><pre>' +
+					error.message + '</pre></div>';
+			} finally {
+				btn.disabled = false;
+				btn.textContent = '▶️ Trigger Workflow';
+			}
+		}
+	</script>
+</body>
+</html>`;
+}

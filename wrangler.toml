@@ -5,6 +5,13 @@ name = "workflow-email"
 main = "src/index.ts"
 compatibility_date = "2024-04-05"
 
+# Cron Triggers - Multi-stage processing
+# Runs every 5 minutes with different job types based on time
+# Job types: monitoring (every 4 hours), fetching (every 10 min), sorting (offset +5), categorization (offset +8)
+# Total: 288 requests/day (well within 100k free tier)
+[triggers]
+crons = ["*/5 * * * *"]  # Every 5 minutes - job type determined by scheduled handler
+
 # CRITICAL: Productions account ID only
 account_id = "bdf4cedbc60ca9b2c1374c11996a67d7"
 
@@ -54,6 +61,11 @@ bucket_name = "business-documents-productions"
 [[r2_buckets]]
 binding = "SUPPLIER_ATTACHMENTS"
 bucket_name = "supplier-attachments-productions"
+
+# Dashboard Snapshots
+[[kv_namespaces]]
+binding = "DASHBOARD_SCREENSHOTS"
+id = "30f18e5a47d64a288ff510847525a7d2"
 
 # AI Configuration for Business Analysis
 [ai]

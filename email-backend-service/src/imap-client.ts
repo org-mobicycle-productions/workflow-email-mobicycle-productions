@@ -78,6 +78,7 @@ export async function fetchEmails(request: FetchEmailsRequest): Promise<EmailMes
 		console.log(`[IMAP] Opened ${mailbox}: ${mailboxInfo.exists} messages total`);
 
 		// Search: unseen only (default) or all messages
+		// ProtonMail Bridge has limited IMAP search support, so we use simple criteria
 		const searchCriteria = unseenOnly ? { seen: false } : {};
 		const searchResults = await client.search(searchCriteria);
 
@@ -88,8 +89,9 @@ export async function fetchEmails(request: FetchEmailsRequest): Promise<EmailMes
 			return [];
 		}
 
-		// Take the most recent messages up to limit
-		const messageUids = searchResults.slice(-limit);
+		// Fetch a larger batch to sort by date (fetch last 200 UIDs max)
+		const batchSize = Math.min(200, searchResults.length);
+		const messageUids = searchResults.slice(-batchSize);
 
 		// Fetch each message
 		for (const uid of messageUids) {
@@ -128,6 +130,15 @@ export async function fetchEmails(request: FetchEmailsRequest): Promise<EmailMes
 		}
 
 		console.log(`[IMAP] Successfully fetched ${emails.length} emails`);
+
+		// Sort by date descending (most recent first)
+		emails.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+		// Return only the requested limit (most recent)
+		const limitedEmails = emails.slice(0, limit);
+		console.log(`[IMAP] Returning ${limitedEmails.length} most recent emails`);
+
+		return limitedEmails;
 	} catch (error: any) {
 		console.error('[IMAP] Connection error:', error.message);
 		throw new Error(`IMAP fetch failed: ${error.message}`);
@@ -138,8 +149,6 @@ export async function fetchEmails(request: FetchEmailsRequest): Promise<EmailMes
 			// Ignore logout errors
 		}
 	}
-
-	return emails;
 }
 
 /**

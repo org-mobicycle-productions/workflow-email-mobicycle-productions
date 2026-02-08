@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "typescript": "^5.0.0",
-    "wrangler": "^3.0.0"
+    "wrangler": "^4.63.0"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -31,13 +31,12 @@
   },
   "keywords": [
     "business",
-    "email-triage", 
+    "email-triage",
     "cloudflare-workflows",
     "supplier-management",
     "productions-only"
   ],
   "author": "MobiCycle Productions",
   "license": "PRIVATE",
-  "private": true,
-  "workspaces": false
+  "private": true
 }
