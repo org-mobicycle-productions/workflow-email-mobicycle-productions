@@ -3,13 +3,12 @@ import { useState, useEffect, useCallback } from "react";
 const API_BASE = ""; // Same origin when embedded in worker
 
 const CATEGORY_COLORS = {
-  Courts: { bg: "#1e3a5f", border: "#2d6ab8", text: "#7cb5ec", icon: "⚖️" },
-  Complaints: { bg: "#4a1942", border: "#8b2d82", text: "#d17bcc", icon: "📋" },
-  "Legal Expenses": { bg: "#1a3d2e", border: "#2d8b5e", text: "#7bccaa", icon: "💰" },
-  Claimants: { bg: "#3d3a1a", border: "#8b822d", text: "#ccc47b", icon: "👤" },
-  Defendants: { bg: "#3d1a1a", border: "#8b2d2d", text: "#cc7b7b", icon: "🏢" },
-  Government: { bg: "#1a2d3d", border: "#2d5e8b", text: "#7baacc", icon: "🏛️" },
-  Reconsideration: { bg: "#2d1a3d", border: "#5e2d8b", text: "#aa7bcc", icon: "🔄" },
+  "Film Production": { bg: "#2d1e3f", border: "#6b4ea5", text: "#b894d4", icon: "🎬" },
+  "Climate & Sustainability": { bg: "#1a3d2e", border: "#2d8b5e", text: "#7bccaa", icon: "🌍" },
+  "Business Operations": { bg: "#3d3a1a", border: "#8b822d", text: "#ccc47b", icon: "💼" },
+  "IndieFilms Branches": { bg: "#1e3a5f", border: "#2d6ab8", text: "#7cb5ec", icon: "🌐" },
+  "Production Support": { bg: "#4a1942", border: "#8b2d82", text: "#d17bcc", icon: "📺" },
+  "Technical & Creative": { bg: "#3d1a1a", border: "#8b2d2d", text: "#cc7b7b", icon: "🎨" },
   Data: { bg: "#1a1a1a", border: "#444", text: "#999", icon: "📦" },
 };
 
@@ -403,9 +402,9 @@ export default function Dashboard() {
     <div style={{ minHeight: "100vh", background: "#090a10", color: "#d0d0d5", fontFamily: "'SF Pro Text', -apple-system, 'Segoe UI', Roboto, sans-serif" }}>
       <div style={{ background: "#0d0e14", borderBottom: "1px solid #1e1f2a", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-          <span style={{ fontSize: "24px" }}>📧</span>
+          <span style={{ fontSize: "24px" }}>🎬</span>
           <div>
-            <h1 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "#e8e8ed", letterSpacing: "-0.01em" }}>MobiCycle OÜ · Email Workflow</h1>
+            <h1 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "#e8e8ed", letterSpacing: "-0.01em" }}>MobiCycle Productions · Film Email Workflow</h1>
             <p style={{ margin: 0, fontSize: "11px", color: "#555" }}>rose@mobicycle.ee · ProtonMail Bridge → Worker → KV · 3 CRON jobs</p>
           </div>
         </div>
