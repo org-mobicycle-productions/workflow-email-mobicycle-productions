@@ -1,42 +1,43 @@
 {
-  "name": "workflow-email-mobicycle-productions",
-  "version": "1.0.0",
-  "description": "Business Email Triage Workflow for MobiCycle Productions Account - suppliers@mobicycle.productions",
-  "main": "src/index.ts",
-  "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "deploy:prod": "wrangler deploy --env production",
-    "deploy:dev": "wrangler deploy --env development",
-    "tail": "wrangler tail",
-    "test": "bun test",
-    "build": "bun run src/index.ts",
-    "workflow:create": "wrangler workflows instances create EmailTriageWorkflow",
-    "workflow:list": "wrangler workflows instances list",
-    "workflow:status": "wrangler workflows instances get"
-  },
-  "dependencies": {
-    "@cloudflare/workers-types": "^4.20240404.0"
-  },
-  "devDependencies": {
-    "typescript": "^5.0.0",
-    "wrangler": "^4.63.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "private-business-repo-productions"
-  },
-  "keywords": [
-    "business",
-    "email-triage",
-    "cloudflare-workflows",
-    "supplier-management",
-    "productions-only"
-  ],
-  "author": "MobiCycle Productions",
-  "license": "PRIVATE",
-  "private": true
+	"name": "workflow-email-mobicycle-productions",
+	"version": "1.0.0",
+	"description": "Business Email Triage Workflow for MobiCycle Productions Account - rose@mobicycle.productions",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"deploy": "wrangler deploy",
+		"dev": "wrangler dev",
+		"start": "wrangler dev",
+		"backend": "bun run src/backend-server.ts",
+		"backend:dev": "bun --watch run src/backend-server.ts",
+		"test": "vitest",
+		"cf-typegen": "wrangler types"
+	},
+	"dependencies": {
+		"imapflow": "^1.0.171",
+		"nodemailer": "^6.9.16",
+		"mailparser": "^3.7.2"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.12.4",
+		"@types/nodemailer": "^6.4.17",
+		"hono": "^4.0.0",
+		"tailwindcss": "^3.4.0",
+		"typescript": "^5.5.2",
+		"vitest": "~3.2.0",
+		"wrangler": "^4.63.0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "private-business-repo-productions"
+	},
+	"keywords": [
+		"business",
+		"email-triage",
+		"cloudflare-workflows",
+		"supplier-management",
+		"productions-only"
+	],
+	"author": "MobiCycle Productions",
+	"license": "PRIVATE"
 }

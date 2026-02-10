@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MobiCycle Productions Email Workflow Dashboard</title>
+    <style>
+        body { font-family: system-ui; max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+        h1 { border-bottom: 2px solid #333; padding-bottom: 0.5rem; }
+        h2 { margin-top: 2rem; color: #555; }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        th, td { padding: 0.75rem; text-align: left; border: 1px solid #ddd; }
+        th { background: #f5f5f5; font-weight: 600; }
+        .yes { color: green; font-weight: bold; }
+        .no { color: red; font-weight: bold; }
+        .loading { color: #999; font-style: italic; }
+        .status { padding: 0.25rem 0.5rem; border-radius: 4px; display: inline-block; }
+        .status.healthy { background: #d4edda; color: #155724; }
+        .status.degraded { background: #fff3cd; color: #856404; }
+        .status.down { background: #f8d7da; color: #721c24; }
+        .cron-jobs { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin: 1rem 0; }
+        .job-card { border: 1px solid #ddd; padding: 1rem; border-radius: 8px; }
+        .job-card h3 { margin: 0 0 0.5rem 0; font-size: 1rem; }
+        .job-card .last-run { font-size: 0.875rem; color: #666; }
+        .job-card .status { margin-top: 0.5rem; }
+    </style>
+</head>
+<body>
+    <h1>🎬 MobiCycle Productions Email Workflow Dashboard</h1>
+
+    <p><strong>Account:</strong> rose@mobicycle.productions | <strong>Bridge Ports:</strong> IMAP 1145, SMTP 1027 | <strong>Backend:</strong> localhost:4002</p>
+
+    <h2>System Health</h2>
+    <div id="health-status" class="loading">Loading health status...</div>
+
+    <h2>CRON Jobs</h2>
+    <div class="cron-jobs">
+        <div class="job-card">
+            <h3>🔍 Monitoring</h3>
+            <div class="last-run" id="monitoring-last-run">Last run: Loading...</div>
+            <div class="status" id="monitoring-status">-</div>
+            <p style="font-size: 0.875rem; margin-top: 0.5rem;">Runs every 4 hours (00:00, 04:00, 08:00, 12:00, 16:00, 20:00)</p>
+        </div>
+        <div class="job-card">
+            <h3>📥 Fetching</h3>
+            <div class="last-run" id="fetching-last-run">Last run: Loading...</div>
+            <div class="status" id="fetching-status">-</div>
+            <p style="font-size: 0.875rem; margin-top: 0.5rem;">Runs every 10 minutes (:00, :10, :20, :30, :40, :50)</p>
+        </div>
+        <div class="job-card">
+            <h3>🗂️ Sorting</h3>
+            <div class="last-run" id="sorting-last-run">Last run: Loading...</div>
+            <div class="status" id="sorting-status">-</div>
+            <p style="font-size: 0.875rem; margin-top: 0.5rem;">Runs 5 min after fetch (:05, :15, :25, :35, :45, :55)</p>
+        </div>
+        <div class="job-card">
+            <h3>🏷️ Categorization</h3>
+            <div class="last-run" id="categorization-last-run">Last run: Loading...</div>
+            <div class="status" id="categorization-status">-</div>
+            <p style="font-size: 0.875rem; margin-top: 0.5rem;">Runs 8 min after fetch (:08, :18, :28, :38, :48, :58)</p>
+        </div>
+    </div>
+
+    <h2>Infrastructure Checks</h2>
+    <table>
+        <tr>
+            <th>Check</th>
+            <th>Status</th>
+        </tr>
+        <tr>
+            <td>1. ProtonMail Bridge process running?</td>
+            <td id="check-bridge-process" class="loading">Checking...</td>
+        </tr>
+        <tr>
+            <td>2. IMAP port 1145 accessible?</td>
+            <td id="check-imap" class="loading">Checking...</td>
+        </tr>
+        <tr>
+            <td>3. SMTP port 1027 accessible?</td>
+            <td id="check-smtp" class="loading">Checking...</td>
+        </tr>
+        <tr>
+            <td>4. Cloudflare tunnel running?</td>
+            <td id="check-tunnel" class="loading">Checking...</td>
+        </tr>
+        <tr>
+            <td>5. Backend service (localhost:4002) accessible?</td>
+            <td id="check-backend" class="loading">Checking...</td>
+        </tr>
+        <tr>
+            <td>6. Tunnel endpoint (mail.mobicycle.productions) reachable?</td>
+            <td id="check-tunnel-endpoint" class="loading">Checking...</td>
+        </tr>
+    </table>
+
+    <h2>Email Processing</h2>
+    <table>
+        <tr>
+            <th>Check</th>
+            <th>Status</th>
+        </tr>
+        <tr>
+            <td>7. Can retrieve emails from Bridge?</td>
+            <td id="check-retrieve" class="loading">Checking...</td>
+        </tr>
+        <tr>
+            <td>8. Whitelist filtering working?</td>
+            <td id="check-whitelist" class="loading">Checking...</td>
+        </tr>
+        <tr>
+            <td>9. KV namespace distribution working?</td>
+            <td id="check-kv" class="loading">Checking...</td>
+        </tr>
+        <tr>
+            <td>10. Email workflow execution working?</td>
+            <td id="check-workflow" class="loading">Checking...</td>
+        </tr>
+    </table>
+
+    <h2>MobiCycle Productions Specific</h2>
+    <table>
+        <tr>
+            <th>Check</th>
+            <th>Status</th>
+        </tr>
+        <tr>
+            <td>1. MobiCycle Productions workflows deployed?</td>
+            <td id="check-deployed" class="loading">Checking...</td>
+        </tr>
+        <tr>
+            <td>2. rose@mobicycle.productions configured in Bridge?</td>
+            <td id="check-email-config" class="loading">Checking...</td>
+        </tr>
+    </table>
+
+    <script>
+        async function loadDashboard() {
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+
+                // Update health status
+                const healthDiv = document.getElementById('health-status');
+                healthDiv.className = `status ${data.overall}`;
+                healthDiv.textContent = `Overall Status: ${data.overall.toUpperCase()}`;
+
+                // Update infrastructure checks
+                document.getElementById('check-bridge-process').innerHTML = data.localDiagnostics?.bridgeProcess?.running ? '<span class="yes">YES</span>' : '<span class="no">NO</span>';
+                document.getElementById('check-imap').innerHTML = data.bridge?.running ? '<span class="yes">YES</span>' : '<span class="no">NO</span>';
+                document.getElementById('check-smtp').innerHTML = data.bridge?.running ? '<span class="yes">YES</span>' : '<span class="no">NO</span>';
+                document.getElementById('check-tunnel').innerHTML = data.tunnel?.up ? '<span class="yes">YES</span>' : '<span class="no">NO</span>';
+                document.getElementById('check-backend').innerHTML = data.bridge?.running ? '<span class="yes">YES</span>' : '<span class="no">NO</span>';
+                document.getElementById('check-tunnel-endpoint').innerHTML = data.tunnel?.up ? '<span class="yes">YES</span>' : '<span class="no">NO</span>';
+
+                // Load CRON job statuses from KV
+                await loadCronStatuses();
+
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+                document.getElementById('health-status').innerHTML = '<span class="status down">ERROR: Cannot connect to worker</span>';
+            }
+        }
+
+        async function loadCronStatuses() {
+            try {
+                const response = await fetch('/api/cron-status');
+                const jobs = await response.json();
+
+                ['monitoring', 'fetching', 'sorting', 'categorization'].forEach(jobType => {
+                    const job = jobs[jobType];
+                    if (job) {
+                        document.getElementById(`${jobType}-last-run`).textContent = `Last run: ${new Date(job.timestamp).toLocaleString()}`;
+                        const statusEl = document.getElementById(`${jobType}-status`);
+                        statusEl.className = `status ${job.status === 'completed' ? 'healthy' : job.status === 'running' ? 'degraded' : 'down'}`;
+                        statusEl.textContent = job.status.toUpperCase();
+                    }
+                });
+            } catch (error) {
+                console.error('Failed to load CRON statuses:', error);
+            }
+        }
+
+        // Load on page load
+        loadDashboard();
+
+        // Refresh every 30 seconds
+        setInterval(loadDashboard, 30000);
+    </script>
+</body>
+</html>

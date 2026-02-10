@@ -1,0 +1,644 @@
+#!/bin/bash
+
+###############################################################################
+# Generate Classification Rules for MobiCycle OÜ Email Workflow
+# Creates rules that map email patterns to the 35 KV namespaces
+###############################################################################
+
+OUTPUT_FILE="classification-rules.json"
+
+cat > "$OUTPUT_FILE" << 'EOF'
+{
+  "version": "1.0",
+  "lastUpdated": "2026-02-09",
+  "description": "Classification rules for MobiCycle OÜ legal email workflow",
+  "account": "rose@mobicycle.ee",
+  "rules": [
+    {
+      "namespace": "EMAIL_COURTS_SUPREME_COURT",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [
+          "supremecourt.uk",
+          "@uksc.uk",
+          "supreme-court@",
+          "registry@supremecourt.uk"
+        ],
+        "fromIncludes": [
+          "supremecourt.uk",
+          "@uksc.uk",
+          "case-management@supremecourt.uk"
+        ],
+        "subjectIncludes": [
+          "Supreme Court",
+          "UKSC",
+          "[SC-"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_COURTS_COURT_OF_APPEALS_CIVIL_DIVISION",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [
+          "civilappeals@",
+          "courtofappeal",
+          "@judiciary.uk"
+        ],
+        "fromIncludes": [
+          "civilappeals@",
+          "courtofappeal",
+          "RCJ-Appeals@"
+        ],
+        "subjectIncludes": [
+          "Court of Appeal",
+          "Civil Division",
+          "[CA-"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_COURTS_KINGS_BENCH_APPEALS_DIVISION",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [
+          "kingsbench@",
+          "administrative@judiciary.uk",
+          "rcj-admin@"
+        ],
+        "fromIncludes": [
+          "kingsbench@",
+          "rcj-admin@",
+          "administrative@judiciary.uk"
+        ],
+        "subjectIncludes": [
+          "King's Bench",
+          "Administrative Court",
+          "[KB-",
+          "[AC-"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_COURTS_CHANCERY_DIVISION",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [
+          "chancery@",
+          "@chd.judiciary.uk",
+          "patents@",
+          "business-list@"
+        ],
+        "fromIncludes": [
+          "chancery@",
+          "@chd.judiciary.uk",
+          "business-list@"
+        ],
+        "subjectIncludes": [
+          "Chancery",
+          "CHD",
+          "[CH-"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_COURTS_ADMINISTRATIVE_COURT",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [
+          "administrativecourtoffice@",
+          "judicial-review@",
+          "aco@judiciary.uk"
+        ],
+        "fromIncludes": [
+          "administrativecourtoffice@",
+          "aco@judiciary.uk"
+        ],
+        "subjectIncludes": [
+          "Administrative Court",
+          "Judicial Review",
+          "[AC-"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_COURTS_CENTRAL_LONDON_COUNTY_COURT",
+      "priority": "medium",
+      "conditions": {
+        "toIncludes": [
+          "centrallondoncc@",
+          "clcc@",
+          "thomasmore@"
+        ],
+        "fromIncludes": [
+          "centrallondoncc@",
+          "clcc@"
+        ],
+        "subjectIncludes": [
+          "Central London County Court",
+          "CLCC",
+          "Thomas More"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_COURTS_CLERKENWELL_COUNTY_COURT",
+      "priority": "medium",
+      "conditions": {
+        "toIncludes": [
+          "clerkenwellcc@",
+          "clerkenwell@"
+        ],
+        "fromIncludes": [
+          "clerkenwellcc@",
+          "clerkenwell@"
+        ],
+        "subjectIncludes": [
+          "Clerkenwell",
+          "County Court"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_COMPLAINTS_ICO",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [
+          "ico.org.uk",
+          "@ico.gov.uk",
+          "casework@ico.org.uk"
+        ],
+        "fromIncludes": [
+          "ico.org.uk",
+          "@ico.gov.uk"
+        ],
+        "subjectIncludes": [
+          "ICO",
+          "Information Commissioner",
+          "Data Protection"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_COMPLAINTS_PHSO",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [
+          "ombudsman.org.uk",
+          "phso.org.uk",
+          "@ombudsman.gov.uk"
+        ],
+        "fromIncludes": [
+          "ombudsman.org.uk",
+          "phso.org.uk"
+        ],
+        "subjectIncludes": [
+          "PHSO",
+          "Ombudsman",
+          "Parliamentary"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_COMPLAINTS_PARLIAMENT",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [
+          "parliament.uk",
+          "@parliament.gov.uk",
+          "mp@parliament.uk"
+        ],
+        "fromIncludes": [
+          "parliament.uk",
+          "@parliament.gov.uk"
+        ],
+        "subjectIncludes": [
+          "Parliament",
+          "House of Commons",
+          "House of Lords",
+          "MP"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_COMPLAINTS_HMCTS",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [
+          "hmcts.net",
+          "@justice.gov.uk",
+          "customerservice@hmcts.net"
+        ],
+        "fromIncludes": [
+          "hmcts.net",
+          "@justice.gov.uk"
+        ],
+        "subjectIncludes": [
+          "HMCTS",
+          "Her Majesty's Courts",
+          "Court Service"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_COMPLAINTS_BAR_STANDARDS_BOARD",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [
+          "barstandardsboard.org.uk",
+          "@bsb.org.uk",
+          "contactus@barstandardsboard.org.uk"
+        ],
+        "fromIncludes": [
+          "barstandardsboard.org.uk",
+          "@bsb.org.uk"
+        ],
+        "subjectIncludes": [
+          "Bar Standards Board",
+          "BSB",
+          "Barrister"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_EXPENSES_LEGAL_FEES_CLAIMANT",
+      "priority": "low",
+      "conditions": {
+        "toIncludes": [],
+        "fromIncludes": [
+          "invoice",
+          "statement",
+          "billing@"
+        ],
+        "subjectIncludes": [
+          "Invoice",
+          "Legal Fees",
+          "Claimant",
+          "HK Law",
+          "Rentify"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_EXPENSES_LEGAL_FEES_COMPANY",
+      "priority": "low",
+      "conditions": {
+        "toIncludes": [],
+        "fromIncludes": [
+          "invoice",
+          "billing@"
+        ],
+        "subjectIncludes": [
+          "Invoice",
+          "Legal Fees",
+          "MobiCycle OÜ"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_EXPENSES_LEGAL_FEES_DIRECTOR",
+      "priority": "low",
+      "conditions": {
+        "toIncludes": [],
+        "fromIncludes": [
+          "invoice",
+          "billing@"
+        ],
+        "subjectIncludes": [
+          "Invoice",
+          "Legal Fees",
+          "Personal",
+          "Director"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_EXPENSES_REPAIRS",
+      "priority": "low",
+      "conditions": {
+        "toIncludes": [],
+        "fromIncludes": [
+          "invoice",
+          "receipt"
+        ],
+        "subjectIncludes": [
+          "Repair",
+          "Maintenance",
+          "Property"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_CLAIMANT_HK_LAW",
+      "priority": "medium",
+      "conditions": {
+        "toIncludes": [
+          "hk-law.co.uk",
+          "@hklaw.co.uk"
+        ],
+        "fromIncludes": [
+          "hk-law.co.uk",
+          "@hklaw.co.uk"
+        ],
+        "subjectIncludes": [
+          "HK Law",
+          "Claimant"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_CLAIMANT_LESSEL",
+      "priority": "medium",
+      "conditions": {
+        "toIncludes": [
+          "lessel"
+        ],
+        "fromIncludes": [
+          "lessel"
+        ],
+        "subjectIncludes": [
+          "Lessel"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_CLAIMANT_LIU",
+      "priority": "medium",
+      "conditions": {
+        "toIncludes": [
+          "liu",
+          "yiqun",
+          "zhihong"
+        ],
+        "fromIncludes": [
+          "liu",
+          "yiqun",
+          "zhihong"
+        ],
+        "subjectIncludes": [
+          "Liu",
+          "Yiqun",
+          "Zhihong"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_CLAIMANT_RENTIFY",
+      "priority": "medium",
+      "conditions": {
+        "toIncludes": [
+          "rentify"
+        ],
+        "fromIncludes": [
+          "rentify"
+        ],
+        "subjectIncludes": [
+          "Rentify"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_DEFENDANTS_DEFENDANT",
+      "priority": "medium",
+      "conditions": {
+        "toIncludes": [
+          "defendant@"
+        ],
+        "fromIncludes": [
+          "defendant@"
+        ],
+        "subjectIncludes": [
+          "Defendant",
+          "Defence"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_DEFENDANTS_BOTH_DEFENDANTS",
+      "priority": "medium",
+      "conditions": {
+        "toIncludes": [],
+        "fromIncludes": [],
+        "subjectIncludes": [
+          "Both Defendants",
+          "Joint Defence"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_DEFENDANTS_BARRISTERS",
+      "priority": "medium",
+      "conditions": {
+        "toIncludes": [
+          "chambers",
+          "barrister@"
+        ],
+        "fromIncludes": [
+          "chambers",
+          "barrister@"
+        ],
+        "subjectIncludes": [
+          "Barrister",
+          "Counsel",
+          "Chambers"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_DEFENDANTS_LITIGANT_IN_PERSON_ONLY",
+      "priority": "medium",
+      "conditions": {
+        "toIncludes": [],
+        "fromIncludes": [],
+        "subjectIncludes": [
+          "Litigant in Person",
+          "LiP",
+          "Self-represented"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_DEFENDANTS_MOBICYCLE_OU_ONLY",
+      "priority": "medium",
+      "conditions": {
+        "toIncludes": [
+          "mobicycle.ee",
+          "mobicycle.eu"
+        ],
+        "fromIncludes": [
+          "mobicycle.ee",
+          "mobicycle.eu"
+        ],
+        "subjectIncludes": [
+          "MobiCycle OÜ",
+          "MobiCycle OU"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_GOVERNMENT_UK_LEGAL_DEPARTMENT",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [
+          "governmentlegal.gov.uk",
+          "gld.gov.uk",
+          "@gld.gov.uk"
+        ],
+        "fromIncludes": [
+          "governmentlegal.gov.uk",
+          "gld.gov.uk"
+        ],
+        "subjectIncludes": [
+          "GLD",
+          "Government Legal Department",
+          "Treasury Solicitor"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_GOVERNMENT_ESTONIA",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [
+          ".ee",
+          "riik.ee",
+          "gov.ee"
+        ],
+        "fromIncludes": [
+          ".ee",
+          "riik.ee",
+          "gov.ee"
+        ],
+        "subjectIncludes": [
+          "Estonia",
+          "Estonian"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_GOVERNMENT_US_STATE_DEPARTMENT",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [
+          "state.gov",
+          "@state.gov"
+        ],
+        "fromIncludes": [
+          "state.gov",
+          "@state.gov"
+        ],
+        "subjectIncludes": [
+          "State Department",
+          "US Embassy",
+          "Consulate"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_RECONSIDERATION_SINGLE_JUDGE",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [],
+        "fromIncludes": [],
+        "subjectIncludes": [
+          "Single Judge",
+          "Reconsideration",
+          "Permission to Appeal"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_RECONSIDERATION_COURT_OFFICER_REVIEW",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [],
+        "fromIncludes": [],
+        "subjectIncludes": [
+          "Court Officer",
+          "Review",
+          "Reconsideration"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_RECONSIDERATION_PTA_REFUSAL",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [],
+        "fromIncludes": [],
+        "subjectIncludes": [
+          "Permission to Appeal",
+          "PTA",
+          "Refusal"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_RECONSIDERATION_CPR52_24_5",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [],
+        "fromIncludes": [],
+        "subjectIncludes": [
+          "CPR 52.24(5)",
+          "Rule 52.24(5)"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_RECONSIDERATION_CPR52_24_6",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [],
+        "fromIncludes": [],
+        "subjectIncludes": [
+          "CPR 52.24(6)",
+          "Rule 52.24(6)"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_RECONSIDERATION_CPR52_30",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [],
+        "fromIncludes": [],
+        "subjectIncludes": [
+          "CPR 52.30",
+          "Rule 52.30",
+          "Reopening"
+        ]
+      }
+    },
+    {
+      "namespace": "EMAIL_RECONSIDERATION_PD52B",
+      "priority": "high",
+      "conditions": {
+        "toIncludes": [],
+        "fromIncludes": [],
+        "subjectIncludes": [
+          "PD52B",
+          "Practice Direction 52B"
+        ]
+      }
+    }
+  ]
+}
+EOF
+
+echo "✅ Classification rules generated: $OUTPUT_FILE"
+echo ""
+echo "Summary:"
+echo "  - 35 KV namespace rules"
+echo "  - 7 Courts"
+echo "  - 5 Complaints"
+echo "  - 4 Legal Expenses"
+echo "  - 4 Claimants"
+echo "  - 5 Defendants"
+echo "  - 3 Government"
+echo "  - 7 Reconsideration"
+echo ""
+echo "Next steps:"
+echo "  1. Review and customize the patterns for your specific use case"
+echo "  2. Use with the whitelist engine to classify emails"
+echo "  3. Integrate with the population workflow"

@@ -1,0 +1,226 @@
+{
+  // Email Triage Workflow - MobiCycle Productions (Film Production) Account ONLY
+  // Film production business workflow - different from legal workflow
+
+  "name": "workflow-email-productions",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-12-23",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Allow importing dashboard assets as plain text
+  "rules": [
+    { "type": "Text", "globs": ["**/*.html", "**/*.md", "**/*.css", "**/*.txt", "**/*.sql"], "fallthrough": false }
+  ],
+  
+  // Cron Triggers for film production workflow
+  "triggers": {
+    "crons": ["*/2 * * * *", "*/5 * * * *", "0 * * * *"]  // prereqs, connect, status
+  },
+  
+  // MobiCycle Productions account ID
+  "account_id": "bdf4cedbc60ca9b2c1374c11996a67d7",
+  
+  // Workflow Configuration
+  "workflows": [{
+    "name": "email-triage-productions",
+    "binding": "EMAIL_TRIAGE",
+    "class_name": "EmailTriageWorkflow",
+    "script_name": "workflow-email-productions"
+  }],
+  
+  // Film Production-Specific Variables
+  "vars": {
+    "PROTON_EMAIL": "rose@mobicycle.productions",
+    "TUNNEL_URL": "https://imap.mobicycle.productions",
+    "NOTIFICATION_EMAIL": "rose@mobicycle.productions",
+    "CLAUDE_WEBHOOK": "https://claude-webhook.mobicycle.productions",
+    
+    // Film Production Settings
+    "MAX_EMAILS_PER_BATCH": "10",  // Higher volume for business
+    "APPROVAL_TIMEOUT_HOURS": "48",  // 2 days for business decisions
+    "BUSINESS_RETENTION_YEARS": "5",  // Standard business retention
+    "FILM_PRODUCTION_MODE": "true"
+  },
+  
+  // KV Namespaces for Film Production Categories
+  "kv_namespaces": [
+    // Film Production
+    {
+      "binding": "EMAIL_FILM_PROJECTS",
+      "id": "PRODUCTIONS_FILM_PROJECTS"
+    },
+    {
+      "binding": "EMAIL_FILM_FINANCING",
+      "id": "PRODUCTIONS_FILM_FINANCING"
+    },
+    {
+      "binding": "EMAIL_FILM_DISTRIBUTION",
+      "id": "PRODUCTIONS_FILM_DISTRIBUTION"
+    },
+    {
+      "binding": "EMAIL_FILM_TALENT",
+      "id": "PRODUCTIONS_FILM_TALENT"
+    },
+    {
+      "binding": "EMAIL_FILM_CREW",
+      "id": "PRODUCTIONS_FILM_CREW"
+    },
+    {
+      "binding": "EMAIL_FILM_LOCATIONS",
+      "id": "PRODUCTIONS_FILM_LOCATIONS"
+    },
+    {
+      "binding": "EMAIL_FILM_EQUIPMENT",
+      "id": "PRODUCTIONS_FILM_EQUIPMENT"
+    },
+    // Climate & Sustainability
+    {
+      "binding": "EMAIL_CLIMATE_THEMES",
+      "id": "PRODUCTIONS_CLIMATE_THEMES"
+    },
+    {
+      "binding": "EMAIL_SUSTAINABILITY",
+      "id": "PRODUCTIONS_SUSTAINABILITY"
+    },
+    {
+      "binding": "EMAIL_ENVIRONMENTAL_IMPACT",
+      "id": "PRODUCTIONS_ENVIRONMENTAL_IMPACT"
+    },
+    // Business Operations
+    {
+      "binding": "EMAIL_INVESTORS_SEIS",
+      "id": "PRODUCTIONS_INVESTORS_SEIS"
+    },
+    {
+      "binding": "EMAIL_INVESTORS_EIS",
+      "id": "PRODUCTIONS_INVESTORS_EIS"
+    },
+    {
+      "binding": "EMAIL_BUSINESS_DEVELOPMENT",
+      "id": "PRODUCTIONS_BUSINESS_DEVELOPMENT"
+    },
+    {
+      "binding": "EMAIL_PARTNERSHIPS",
+      "id": "PRODUCTIONS_PARTNERSHIPS"
+    },
+    {
+      "binding": "EMAIL_CONTRACTS",
+      "id": "PRODUCTIONS_CONTRACTS"
+    },
+    // Regional IndieFilms Branches
+    {
+      "binding": "EMAIL_INDIEFILMS_UK",
+      "id": "PRODUCTIONS_INDIEFILMS_UK"
+    },
+    {
+      "binding": "EMAIL_INDIEFILMS_USA",
+      "id": "PRODUCTIONS_INDIEFILMS_USA"
+    },
+    {
+      "binding": "EMAIL_INDIEFILMS_AFRICA",
+      "id": "PRODUCTIONS_INDIEFILMS_AFRICA"
+    },
+    {
+      "binding": "EMAIL_INDIEFILMS_EARTH",
+      "id": "PRODUCTIONS_INDIEFILMS_EARTH"
+    },
+    {
+      "binding": "EMAIL_INDIEFILMS_BLACK",
+      "id": "PRODUCTIONS_INDIEFILMS_BLACK"
+    },
+    // Production Support
+    {
+      "binding": "EMAIL_POST_PRODUCTION",
+      "id": "PRODUCTIONS_POST_PRODUCTION"
+    },
+    {
+      "binding": "EMAIL_MARKETING",
+      "id": "PRODUCTIONS_MARKETING"
+    },
+    {
+      "binding": "EMAIL_PRESS_MEDIA",
+      "id": "PRODUCTIONS_PRESS_MEDIA"
+    },
+    {
+      "binding": "EMAIL_FILM_FESTIVALS",
+      "id": "PRODUCTIONS_FILM_FESTIVALS"
+    },
+    {
+      "binding": "EMAIL_AWARDS_SUBMISSIONS",
+      "id": "PRODUCTIONS_AWARDS_SUBMISSIONS"
+    },
+    // Technical & Creative
+    {
+      "binding": "EMAIL_SCRIPTS_DEVELOPMENT",
+      "id": "PRODUCTIONS_SCRIPTS_DEVELOPMENT"
+    },
+    {
+      "binding": "EMAIL_CREATIVE_COLLABORATION",
+      "id": "PRODUCTIONS_CREATIVE_COLLABORATION"
+    },
+    {
+      "binding": "EMAIL_TECHNICAL_SUPPORT",
+      "id": "PRODUCTIONS_TECHNICAL_SUPPORT"
+    },
+    // Raw Email Data
+    {
+      "binding": "RAW_DATA_HEADERS",
+      "id": "PRODUCTIONS_RAW_DATA_HEADERS"
+    },
+    // Filtered Email Data
+    {
+      "binding": "FILTERED_DATA_HEADERS",
+      "id": "PRODUCTIONS_FILTERED_DATA_HEADERS"
+    },
+    // Dashboard Snapshots
+    {
+      "binding": "DASHBOARD_SCREENSHOTS",
+      "id": "PRODUCTIONS_DASHBOARD_SCREENSHOTS"
+    }
+  ],
+  
+  // R2 Buckets for Film Production Documents
+  "r2_buckets": [
+    {
+      "binding": "FILM_DOCUMENTS",
+      "bucket_name": "film-documents-mobicycle-productions"
+    },
+    {
+      "binding": "PROJECT_ATTACHMENTS",
+      "bucket_name": "project-attachments-mobicycle-productions"
+    }
+  ],
+  
+  // Queue for Film Production Processing
+  "queues": {
+    "producers": [{
+      "binding": "FILM_PROCESSING_QUEUE",
+      "queue": "film-processing-mobicycle-productions"
+    }]
+  },
+  
+  // AI Configuration for Film Business Analysis
+  "ai": {
+    "binding": "AI"
+  },
+  
+  // Development Environment
+  "env": {
+    "development": {
+      "name": "workflow-email-productions-dev",
+      "vars": {
+        "TUNNEL_URL": "http://localhost:4001",
+        "APPROVAL_TIMEOUT_HOURS": "1"
+      }
+    },
+    
+    // Production Environment
+    "production": {
+      "name": "workflow-email-productions-prod",
+      "vars": {
+        "TUNNEL_URL": "https://imap.mobicycle.productions",
+        "APPROVAL_TIMEOUT_HOURS": "48"
+      }
+    }
+  }
+}
