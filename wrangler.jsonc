@@ -2,9 +2,9 @@
   // Email Triage Workflow - MobiCycle Productions (Film Production) Account ONLY
   // Film production business workflow - different from legal workflow
 
-  "name": "workflow-email-productions",
+  "name": "workflow-email",
   "main": "src/index.ts",
-  "compatibility_date": "2025-12-23",
+  "compatibility_date": "2026-02-12",
   "compatibility_flags": ["nodejs_compat"],
 
   // Allow importing dashboard assets as plain text
